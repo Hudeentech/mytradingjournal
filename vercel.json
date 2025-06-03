@@ -15,8 +15,8 @@
     { "src": "/(.*)", "dest": "/src/main.tsx" }
   ],
   "env": {
-    "MONGO_URI": "your-mongodb-uri",
-    "DB_NAME": "trading_journal",
+    "MONGO_URI": "mongodb+srv://hudeen09:q18tfG8bnZwQjhUj@myjournal0.pclhren.mongodb.net/?retryWrites=true&w=majority&appName=myjournal0",
+    "DB_NAME": "tradingjournal",
     "JWT_SECRET": "your-jwt-secret",
     "SESSION_SECRET": "your-session-secret"
   }
