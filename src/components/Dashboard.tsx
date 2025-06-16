@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import TradeModal from './TradeModal';
-import TradeList from './TradeList';
-import TradeChart from './TradeChart';
-import {
-  BarChart,
+import { useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHome, faChartSimple, faPlus, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { TrendingUp } from "lucide-react";
+import {  BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
   LineChart,
-  Line,
-  Cell,
+  Line
 } from 'recharts';
-import { useNavigate } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faChartSimple, faPlus, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import TradeModal from './TradeModal';
+import TradeList from './TradeList';
 
 interface TradeEntry {
   id?: string; // _id from MongoDB will be mapped to id
@@ -37,9 +35,7 @@ const Dashboard: React.FC = () => {
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [winLossTimeframe, setWinLossTimeframe] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [loading, setLoading] = useState(true);
-  const [showLogout, setShowLogout] = useState(false);
-  const navigate = useNavigate();
-  const username = localStorage.getItem('username');
+  const [showLogout, setShowLogout] = useState(false);  const navigate = useNavigate();
 
   // Fetch trades from backend on mount
   useEffect(() => {
@@ -119,38 +115,13 @@ const Dashboard: React.FC = () => {
     return trades;
   }
 
-  const filteredTrades = filterTradesByTimeframe(trades, timeframe);
-  const chartData = groupTradesForBarChart(filteredTrades);
-  const performanceData = groupPerformance(filteredTrades, timeframe);
+  const filteredTrades = filterTradesByTimeframe(trades, timeframe);  const chartData = groupTradesForBarChart(filteredTrades);
   // Use filtered trades for win/loss chart based on winLossTimeframe
   const winLossFilteredTrades = filterTradesByTimeframe(trades, winLossTimeframe);
   const winRateBarData = groupNetPLPerPeriod(winLossFilteredTrades, winLossTimeframe);
-  const stats = calculateStats(timeframe, filteredTrades);
+  const stats = calculateStats(filteredTrades);
 
-  // Helper to group trades by day/week/month/year
-  function groupTrades(trades: TradeEntry[], tf: 'daily' | 'weekly' | 'monthly' | 'yearly') {
-    const map = new Map<string, number>();
-    trades.forEach(trade => {
-      const date = trade.date instanceof Date ? trade.date : new Date(trade.date);
-      let key = '';
-      if (tf === 'daily') {
-        key = date.toLocaleDateString();
-      } else if (tf === 'weekly') {
-        const week = `${date.getFullYear()}-W${Math.ceil((date.getDate() + 6 - date.getDay()) / 7)}`;
-        key = week;
-      } else if (tf === 'monthly') {
-        key = `${date.getFullYear()}-${date.getMonth() + 1}`;
-      } else if (tf === 'yearly') {
-        key = `${date.getFullYear()}`;
-      }
-      const pnl = trade.type === 'profit' ? trade.amount : -trade.amount;
-      map.set(key, (map.get(key) || 0) + pnl);
-    });
-    // Sort keys chronologically
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([name, pnl]) => ({ name, pnl }));
-  }
-
-  // Helper to group trades by day and provide target, profit, and loss for each day
+  // Helper to group trades by day/week/month/year  // Helper to group trades by day and provide target, profit, and loss for each day
   function groupTradesForBarChart(trades: TradeEntry[]) {
     // Days of the week
     const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -295,7 +266,7 @@ const Dashboard: React.FC = () => {
   }
 
   // Update calculateStats to accept filtered trades
-  function calculateStats(period: 'daily' | 'weekly' | 'monthly' | 'yearly', tradesList: TradeEntry[] = filteredTrades) {
+  function calculateStats(tradesList: TradeEntry[] = filteredTrades) {
     return {
       totalProfit: tradesList.reduce((sum, trade) => sum + (trade.type === 'profit' ? trade.amount : 0), 0),
       totalLoss: tradesList.reduce((sum, trade) => sum + (trade.type === 'loss' ? trade.amount : 0), 0),
@@ -307,14 +278,6 @@ const Dashboard: React.FC = () => {
   const safeTrades = trades
     .map(t => ({...t, id: t.id || t._id || '', date: t.date instanceof Date ? t.date : new Date(t.date)}))
     .filter(t => t.id);
-
-  function formatCompactNumber(num: number) {
-    if (Math.abs(num) >= 1000) {
-      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-    }
-    return num.toString();
-  }
-
   // Logout handler
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -332,7 +295,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 p-2 flex flex-col justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 flex flex-col justify-between">
       {/* Top bar with logout icon */}
       <div className="flex justify-end items-center p-4">
         <button
@@ -344,8 +307,8 @@ const Dashboard: React.FC = () => {
         </button>
       </div>
 
-      <div className="max-w-6xl mx-auto pb-24">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-10 gap-4">
+      <div className="w-[95%] mx-auto pb-24">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-2">
           <div>
             <h1 className="text-4xl px-2 my-4 font-medium text-gray-900 tracking-tight-lg">Dashboard</h1>
             <div className="flex px-2 gap-2 mt-2">
@@ -381,64 +344,117 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 border border-white/40 rounded-2xl p-2 mb-10">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Performance Chart</h2>
-          <div className="w-full h-[220px] md:h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={formatCompactNumber} tick={{ fontSize: 12 }} width={40} />
-                <Tooltip formatter={(value: number, name) => [`$${formatCompactNumber(value as number)}`, name]} />
-                <Legend />
-                <Line type="monotone" dataKey="target" stroke="#a3a3a3" name="Target" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="profit" stroke="#22c55e" name="Profit" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="loss" stroke="#ef4444" name="Loss" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div className="bg-white/80 border border-white/40 rounded-2xl p-2 mb-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-2">
-            <h2 className="text-lg font-bold text-gray-800">Win/Loss by {winLossTimeframe.charAt(0).toUpperCase() + winLossTimeframe.slice(1)}</h2>
-            <div className="flex gap-1 mt-2">
-              {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setWinLossTimeframe(period)}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold shadow transition-colors duration-150 ${
-                    winLossTimeframe === period
-                      ? 'bg-gradient-to-r from-green-600 to-blue-500 text-white scale-105'
-                      : 'bg-white/70 text-gray-700 hover:bg-green-100 border border-gray-200'
-                  }`}
-                >
-                  {period.charAt(0).toUpperCase() + period.slice(1)}
-                </button>
-              ))}
+        {/* Performance Bar Chart using shadcn/ui Card and Recharts BarChart */}
+        <div className="bg-white/80 border border-white/40 rounded-2xl mb-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Chart</CardTitle>
+              <CardDescription>{/* You can add a date range or summary here */}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-[300px]">                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={chartData} 
+                    barGap={2}
+                    margin={{ top: 0, right: 0, left: -5, bottom: 0 }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      tickLine={false} 
+                      tickMargin={5} 
+                      axisLine={false}
+                      fontSize={12}
+                    />
+                    <Tooltip 
+                      cursor={false}
+                      contentStyle={{ fontSize: '12px' }}
+                    />
+                    <Bar dataKey="target" fill="#a3a3a3" radius={[4, 4, 0, 0]} maxBarSize={45} name="Target" />
+                    <Bar dataKey="profit" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={45} name="Profit" />
+                    <Bar dataKey="loss" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={45} name="Loss" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+            <CardFooter className="flex-col items-start gap-2 text-sm">
+              <div className="flex gap-2 leading-none font-medium">
+                Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+              </div>
+              <div className="text-muted-foreground leading-none">
+                Showing performance for the selected period
+              </div>
+            </CardFooter>
+          </Card>
+        </div>        <Card className="mb-10">
+          <CardHeader>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <CardTitle>Profit/Loss Trend</CardTitle>
+              <div className="flex gap-1">
+                {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((period) => (
+                  <button
+                    key={period}
+                    onClick={() => setWinLossTimeframe(period)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold shadow transition-colors duration-150 ${
+                      winLossTimeframe === period
+                        ? 'bg-gradient-to-r from-green-600 to-blue-500 text-white scale-105'
+                        : 'bg-white/70 text-gray-700 hover:bg-green-100 border border-gray-200'
+                    }`}
+                  >
+                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="w-full h-[220px] md:h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={winRateBarData} margin={{ top: 10, right: 0, left: 0, bottom: 5 }} barGap={6}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={formatCompactNumber} tick={{ fontSize: 12 }} width={40} />
-                <Tooltip formatter={(value: number) => [`$${formatCompactNumber(value)}`, 'Net']} />
-                <Bar dataKey="net" name="Net P/L" radius={[6, 6, 0, 0]} minPointSize={2}
-                  label={{
-                    position: 'top',
-                    fontSize: 12,
-                    formatter: (v: number) => (v > 0 ? `+$${formatCompactNumber(v)}` : v < 0 ? `-$${formatCompactNumber(Math.abs(v))}` : '$0'),
-                  }}
+            <CardDescription>
+              {winLossTimeframe.charAt(0).toUpperCase() + winLossTimeframe.slice(1)} performance overview
+            </CardDescription>
+          </CardHeader>
+          <CardContent>              <div className="w-full h-[250px] sm:h-[300px]">
+                <ResponsiveContainer width="100%" height="100%"><LineChart
+                  data={winRateBarData}
+                  margin={{ top: 0, right: 0, left: -10, bottom: 0 }}
                 >
-                  {winRateBarData.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={entry.net >= 0 ? '#22c55e' : '#ef4444'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={5}
+                    fontSize={12}
+                    tickFormatter={(value) => value.slice(0, 3)}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={12}
+                    width={45}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <Tooltip
+                    cursor={false}
+                    formatter={(value: number) => [`$${value >= 0 ? '+' : ''}${value.toFixed(2)}`, 'Net P/L']}
+                  />
+                  <Line
+                    type="step"
+                    dataKey="net"
+                    stroke="var(--chart-1, #22c55e)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+          <CardFooter className="flex-col items-start gap-2 text-sm">
+            <div className="flex gap-2 leading-none font-medium">
+              {winRateBarData[winRateBarData.length - 1]?.net >= 0 ? 'Trending up' : 'Trending down'} by {Math.abs(winRateBarData[winRateBarData.length - 1]?.net || 0).toFixed(1)}% <TrendingUp className="h-4 w-4" />
+            </div>
+            <div className="text-muted-foreground leading-none">
+              Showing {winLossTimeframe} profit/loss trend
+            </div>
+          </CardFooter>
+        </Card>
 
         <div className="bg-white/80 border border-white/40 rounded-2xl  p-2 mb-10">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Recent Trades</h2>
@@ -448,10 +464,9 @@ const Dashboard: React.FC = () => {
             <TradeList trades={safeTrades} />
           )}
         </div>
-      </div>
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200 shadow-lg flex justify-around items-center py-3 z-50">
+      </div>      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200 shadow-lg flex justify-around items-center py-3 z-50">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/home')}
           className="flex flex-col items-center text-gray-600 font-semibold focus:outline-none"
         >
           <FontAwesomeIcon icon={faHome} size="lg" />
