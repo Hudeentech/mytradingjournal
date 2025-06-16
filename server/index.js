@@ -5,12 +5,44 @@ const { MongoClient, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://mytradingjournal.vercel.app'
+];
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
+}));
 app.use(express.json());
-app.use(session({ secret: process.env.SESSION_SECRET || 'secret', resave: false, saveUninitialized: false }));
+app.use(session({ 
+  secret: process.env.SESSION_SECRET || 'secret', 
+  resave: false, 
+  saveUninitialized: false,
+  cookie: {
+    secure: true,
+    sameSite: 'none',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 
 // MongoDB setup
 const uri = process.env.MONGO_URI || 'mongodb://localhost:27017';
@@ -30,14 +62,32 @@ async function getUserCollection() {
 
 // Middleware to authenticate JWT and set req.user
 function authenticateJWT(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
-  const token = authHeader.split(' ')[1];
-  jwt.verify(token, process.env.JWT_SECRET || 'secret', (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
-    req.user = user;
-    next();
-  });
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Invalid token format' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET || 'secret', (err, user) => {
+      if (err) {
+        if (err.name === 'TokenExpiredError') {
+          return res.status(401).json({ error: 'Token expired' });
+        }
+        return res.status(403).json({ error: 'Invalid token' });
+      }
+      
+      req.user = user;
+      next();
+    });
+  } catch (error) {
+    console.error('Authentication error:', error);
+    res.status(500).json({ error: 'Internal server error during authentication' });
+  }
 }
 
 // Get all trades for the logged-in user

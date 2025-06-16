@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = import.meta.env.PROD 
+  ? 'https://mytradingjournal.vercel.app/api'
+  : 'http://localhost:4000/api';
 
 const RegisterPage: React.FC = () => {
   const [username, setUsername] = useState('');
