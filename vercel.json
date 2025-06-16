@@ -6,13 +6,14 @@
       "use": "@vercel/node"
     },
     {
-      "src": "src/main.tsx",
+      "src": "package.json",
       "use": "@vercel/static-build"
     }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/server/index.js" },
-    { "src": "/(.*)", "dest": "/src/main.tsx" }
+    { "src": "/(.*)", "dest": "/dist/$1" },
+    { "src": "/[^.]+", "dest": "/dist/index.html" }
   ],
   "env": {
     "MONGO_URI": "mongodb+srv://hudeen09:q18tfG8bnZwQjhUj@myjournal0.pclhren.mongodb.net/?retryWrites=true&w=majority&appName=myjournal0",
