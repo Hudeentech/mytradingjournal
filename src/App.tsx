@@ -7,6 +7,8 @@ import Dashboard from './components/Dashboard'
 import Home from './components/Home'
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
+import SettingsPage from './components/SettingsPage';
+import PipsCalculator from './components/PipsCalculator';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const token = localStorage.getItem('token');
@@ -34,6 +36,8 @@ function AppRoutes() {
       {/* Protected routes */}
       <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
       <Route path="/home" element={<RequireAuth><Home /></RequireAuth>} />
+      <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+      <Route path="/calculator" element={<RequireAuth><PipsCalculator /></RequireAuth>} />
 
       {/* Root route - redirect to login if not authenticated, dashboard if authenticated */}
       <Route path="/" element={

@@ -127,15 +127,49 @@ app.put('/api/trades/:id', authenticateJWT, async (req, res) => {
 
 // Register endpoint
 app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-  const users = await getUserCollection();
-  const existing = await users.findOne({ username });
-  if (existing) return res.status(409).json({ error: 'Username already exists' });
-  const passwordHash = await bcrypt.hash(password, 10);
-  const result = await users.insertOne({ username, passwordHash });
-  const token = jwt.sign({ userId: result.insertedId, username }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
-  res.json({ token, username });
+  const { username, password, email, name } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required' });
+  }
+
+  try {
+    const users = await getUserCollection();
+    
+    // Check if username exists
+    const existingUsername = await users.findOne({ username });
+    if (existingUsername) {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+
+    // Check if email exists (if provided)
+    if (email) {
+      const existingEmail = await users.findOne({ email });
+      if (existingEmail) {
+        return res.status(409).json({ error: 'Email already exists' });
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const result = await users.insertOne({ 
+      username, 
+      passwordHash,
+      email,
+      name,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const token = jwt.sign(
+      { userId: result.insertedId, username, email, name },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
+    );
+    
+    res.json({ token, username, email, name });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Failed to register user' });
+  }
 });
 
 // Login endpoint
@@ -149,6 +183,61 @@ app.post('/api/login', async (req, res) => {
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
   const token = jwt.sign({ userId: user._id, username }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
   res.json({ token, username });
+});
+
+// Update user profile
+app.put('/api/settings/profile', authenticateJWT, async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const users = await getUserCollection();
+    
+    // Check if email is already taken by another user
+    if (email) {
+      const existingUser = await users.findOne({ email, _id: { $ne: req.user.userId } });
+      if (existingUser) {
+        return res.status(400).json({ error: 'Email is already in use' });
+      }
+    }
+
+    await users.updateOne(
+      { _id: new ObjectId(req.user.userId) },
+      { $set: { name, email } }
+    );
+
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Update password
+app.put('/api/settings/password', authenticateJWT, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const users = await getUserCollection();
+    
+    const user = await users.findOne({ _id: new ObjectId(req.user.userId) });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const validPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!validPassword) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    await users.updateOne(
+      { _id: new ObjectId(req.user.userId) },
+      { $set: { passwordHash: newPasswordHash } }
+    );
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Password update error:', error);
+    res.status(500).json({ error: 'Failed to update password' });
+  }
 });
 
 const port = process.env.PORT || 4000;

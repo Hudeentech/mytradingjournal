@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faChartSimple, faPlus, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import BottomNav from './BottomNav';
+import { faCog } from '@fortawesome/free-solid-svg-icons';
 import { TrendingUp } from "lucide-react";
 import {  BarChart,
   Bar,
@@ -32,41 +34,78 @@ const API_URL = import.meta.env.PROD
   : 'http://localhost:4000/api/trades';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [trades, setTrades] = useState<TradeEntry[]>([]);
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [winLossTimeframe, setWinLossTimeframe] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [loading, setLoading] = useState(true);
-  const [showLogout, setShowLogout] = useState(false);  const navigate = useNavigate();
+  const [showLogout, setShowLogout] = useState(false);  
+  const username = localStorage.getItem('username');
 
   // Fetch trades from backend on mount
   useEffect(() => {
-    setLoading(true);
-    fetch(API_URL, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    })
-      .then(res => res.json())
-      .then(data => {
-        setTrades(data.map((t: any) => ({ ...t, id: t._id, date: t.date ? new Date(t.date) : new Date() })));
+    const fetchTrades = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(API_URL, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          credentials: 'include',
+        });
+        
+        if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            navigate('/login');
+            return;
+          }
+          throw new Error('Failed to fetch trades');
+        }
+
+        const data = await res.json();
+        setTrades(data.map((t: any) => ({ ...t, id: t._id, date: new Date(t.date) })));
+      } catch (error: any) {
+        console.error('Error fetching trades:', error);
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+      }
+    };
+
+    fetchTrades();
+  }, [navigate]);
 
   // Add trade to backend
   const addTrade = async (tradeData: { amount: number; target: string; type: 'profit' | 'loss'; notes?: string }) => {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-      body: JSON.stringify({ ...tradeData, date: new Date() }),
-    });
-    const saved = await res.json();
-    setTrades([{ ...saved, id: saved._id, date: new Date(saved.date) }, ...trades]);
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ ...tradeData, date: new Date() }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('username');
+          navigate('/login');
+          return;
+        }
+        throw new Error('Failed to add trade');
+      }
+
+      const saved = await res.json();
+      setTrades(prevTrades => [{ ...saved, id: saved._id, date: new Date(saved.date) }, ...prevTrades]);
+    } catch (error: any) {
+      console.error('Error adding trade:', error);
+      // You could add a toast notification here
+    }
   };
 
   // Fix: filterTradesByTimeframe for weekly/monthly
@@ -296,17 +335,34 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 flex flex-col justify-between">
-      {/* Top bar with logout icon */}
-      <div className="flex justify-end items-center p-4">
-        <button
-          onClick={() => setShowLogout(true)}
-          className="text-gray-600 hover:text-red-500 transition-colors text-2xl"
-          title="Logout"
-        >
-          <FontAwesomeIcon icon={faSignOutAlt} />
-        </button>
+  return (    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 flex flex-col justify-between">
+      {/* Top bar with name and logout */}
+      <div className="flex justify-between items-center p-4">
+        <h1 className="text-xl font-semibold text-gray-800">
+          Welcome, {username || 'Trader'}
+        </h1>
+        <div className="relative">
+          <button
+            onClick={() => setShowLogout(!showLogout)}
+            className="p-2 hover:bg-gray-200 rounded-full text-gray-600 hover:text-red-500 transition-colors"
+            title="Open menu"
+          >
+            <FontAwesomeIcon icon={faSignOutAlt} />
+          </button>
+          {showLogout && (
+            <div className="absolute right-0 mt-2 py-2 w-48 bg-white rounded-md shadow-xl z-20">
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  navigate('/login');
+                }}
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="w-[95%] mx-auto pb-24">
@@ -466,29 +522,7 @@ const Dashboard: React.FC = () => {
             <TradeList trades={safeTrades} />
           )}
         </div>
-      </div>      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200 shadow-lg flex justify-around items-center py-3 z-50">
-        <button
-          onClick={() => navigate('/home')}
-          className="flex flex-col items-center text-gray-600 font-semibold focus:outline-none"
-        >
-          <FontAwesomeIcon icon={faHome} size="lg" />
-          <span className="text-xs">Home</span>
-        </button>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-full shadow-lg w-14 h-14 -mt-8 border-4 border-white focus:outline-none hover:scale-105 transition-transform duration-200"
-          title="Add Trade"
-        >
-          <FontAwesomeIcon icon={faPlus} />
-        </button>
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex flex-col items-center text-blue-600 font-semibold focus:outline-none"
-        >
-          <FontAwesomeIcon icon={faChartSimple} size="lg" />
-          <span className="text-xs">Dashboard</span>
-        </button>
-      </nav>
+      </div>      <BottomNav onAddClick={() => setIsModalOpen(true)} />
       {/* Logout Modal */}
       {showLogout && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import TradeList from './TradeList';
 import TradeModal from './TradeModal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faChartSimple, faPlus, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { faSignOutAlt, faPlus } from '@fortawesome/free-solid-svg-icons';
+import BottomNav from './BottomNav';
 
 interface Trade {
   id: string;
@@ -114,32 +115,57 @@ const Home: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-gradient-to-br from-blue-100 via-white to-indigo-100">
-      {/* Top bar with logout icon */}
-      <div className="flex justify-end items-center p-4">
-        <button
-          onClick={() => setShowLogout(true)}
-          className="text-gray-600 hover:text-red-500 transition-colors text-2xl"
-          title="Logout"
-        >
-          <FontAwesomeIcon icon={faSignOutAlt} />
-        </button>
+    <div className="min-h-screen bg-gray-100">
+      <div className="p-4 flex justify-between items-center">
+        <h1 className="text-xl font-semibold">
+          Welcome, {username || 'Trader'}
+        </h1>
+        <div className="relative">          <button 
+            onClick={() => setShowLogout(!showLogout)}
+            className="p-2 hover:bg-gray-200 rounded-full"
+            title="Open menu"
+          >
+            <FontAwesomeIcon icon={faSignOutAlt} />
+          </button>
+          {showLogout && (
+            <div className="absolute right-0 mt-2 py-2 w-48 bg-white rounded-md z-20">
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  navigate('/login');
+                }}
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="backdrop-blur-lg bg-white/70 border border-white/40 shadow-2xl rounded-3xl p-4 w-full max-w-lg flex flex-col items-center">
-          <h1 className="text-2xl font-semibold text-gray-900 text-left mb-8 w-full tracking-tight">Trading Performance</h1>
-          <div className={`w-full text-center p-8 rounded-2xl shadow-lg ${
-            isProfit ? 'bg-gradient-to-r from-green-100 to-green-50' : 'bg-gradient-to-r from-red-100 to-red-50'
-          }`}>
-            <p className="text-base font-medium text-gray-500 mb-2">Total P/L</p>
-            <p className={`text-3xl font-bold tracking-tight ${
-              isProfit ? 'text-green-600' : 'text-red-500'
-            }`}>
-              {isProfit ? '+' : '-'}${Math.abs(totalPnL).toFixed(2)}
-            </p>
+        <div className="backdrop-blur-lg bg-white/70 border border-white/40 min-h-svh rounded-3xl p-4 w-full max-w-lg flex flex-col items-center">
+          <h1 className="text-2xl font-medium text-gray-900 text-left mb-8 w-full tracking-tight">Trading Performance</h1>
+          <div className={`w-full h-[200px] flex justify-center flex-col gap-4 text-left p-8 rounded-2xl shadow-lg ${
+            isProfit ? 'bg-gradient-to-r from-green-100 to-green-50' : 'bg-gradient-to-r from-red-100 to-red-50'          }`}>
+            <div className="relative">
+              <button
+                onClick={() => { setEditingTrade(null); setIsModalOpen(true); }}
+                className="absolute -top-14 -right-10 w-14 h-14 flex items-center border-2 border-white justify-center bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-full shadow-lg focus:outline-none hover:scale-105 transition-transform duration-200"
+                title="Add Trade"
+                aria-label="Add Trade"
+              >
+                <FontAwesomeIcon icon={faPlus} />
+              </button>
+              <p className="text-base font-medium py-2 text-gray-500 mb-2">Total P/L</p>
+              <p className={`text-5xl font-semibold tracking-tight ${
+                isProfit ? 'text-green-600' : 'text-red-500'
+              }`}>
+                {isProfit ? '+' : '-'}${Math.abs(totalPnL).toFixed(2)}
+              </p>
+            </div>
           </div>
           <div className="w-full mt-8">
-            <h2 className="text-lg font-bold text-gray-700 mb-2">Recent Trades</h2>
+            <h2 className="text-lg font-medium text-gray-700 mb-2">Recent Trades</h2>
             {recentTrades.length === 0 ? (
               <p className="text-gray-400 text-center">No trades yet</p>
             ) : (
@@ -151,54 +177,7 @@ const Home: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
-      {/* Add Trade Floating Button */}
-      <button
-        onClick={() => { setEditingTrade(null); setIsModalOpen(true); }}
-        className="fixed bottom-4 inset-x-0 mx-auto z-100 w-fit bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-5 rounded-full font-bold shadow-lg hover:scale-105 transition-transform duration-200 custom-fab-shadow"
-        title="Add Trade"
-      >
-        <FontAwesomeIcon icon={faPlus} size="lg" />
-      </button>
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200 shadow-lg flex justify-around py-3 z-50">
-        <button
-          onClick={() => navigate('/')}
-          className="flex flex-col items-center text-blue-600 font-semibold focus:outline-none"
-        >
-          <FontAwesomeIcon icon={faHome} size="lg" />
-          <span className="text-xs">Home</span>
-        </button>
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex flex-col items-center text-gray-600 font-semibold focus:outline-none"
-        >
-          <FontAwesomeIcon icon={faChartSimple} size="lg" />
-          <span className="text-xs">Dashboard</span>
-        </button>
-      </nav>
-      {/* Logout Modal */}
-      {showLogout && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-8 max-w-xs w-full flex flex-col items-center">
-            <h2 className="text-lg font-bold mb-4">Log out?</h2>
-            <p className="mb-6 text-gray-600 text-center">Are you sure you want to log out?</p>
-            <div className="flex gap-4">
-              <button
-                onClick={handleLogout}
-                className="bg-gradient-to-r from-blue-600 to-indigo-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:scale-105 transition-transform"
-              >
-                Yes, Logout
-              </button>
-              <button
-                onClick={() => setShowLogout(false)}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>        <BottomNav />
       <TradeModal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingTrade(null); }}

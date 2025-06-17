@@ -58,7 +58,7 @@ const TradeList: React.FC<TradeListProps> = ({ trades, onEdit, onDelete }) => {
                 {trade.type === 'profit' ? '+' : '-'}${Math.abs(trade.amount).toFixed(2)}
               </h3>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold shadow ${
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${
                   trade.type === 'profit'
                     ? 'bg-green-100 text-green-700'
                     : 'bg-red-100 text-red-600'

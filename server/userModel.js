@@ -11,9 +11,17 @@ async function findUserByUsername(client, dbName, username) {
   return col.findOne({ username });
 }
 
-async function createUser(client, dbName, { username, passwordHash, googleId }) {
+async function createUser(client, dbName, { username, passwordHash, googleId, email, name }) {
   const col = await getUserCollection(client, dbName);
-  return col.insertOne({ username, passwordHash, googleId });
+  return col.insertOne({ 
+    username, 
+    passwordHash, 
+    googleId,
+    email,
+    name,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  });
 }
 
 module.exports = { getUserCollection, findUserByUsername, createUser };
